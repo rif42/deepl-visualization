@@ -34,7 +34,7 @@ def main() -> None:
     for layer_name, tensors in layers.items():
         manifest[layer_name] = {}
         for tensor_name, arr in tensors.items():
-            filename = f"{layer_name}_{tensor_name}.bin"
+            filename = f"{layer_name}_{tensor_name}.dat"
             (out_dir / filename).write_bytes(arr.tobytes())
             manifest[layer_name][tensor_name] = {
                 "file": filename,
