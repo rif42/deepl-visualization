@@ -20,6 +20,7 @@ export class NetworkVisualization {
   private layerConfigs: LayerConfig[] = [];
   private weightMatrices: Float32Array[] = [];
   private container: HTMLElement;
+  private animationFrameId: number = 0;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -40,16 +41,32 @@ export class NetworkVisualization {
     this.animate();
   }
 
+  /**
+   * Builds the 3D layer geometry and renders the strongest connections.
+   *
+   * @param layerSizes - Number of neurons in each layer (input + hidden + output).
+   * @param weights - Flat weight matrices where `weights[i]` connects layer i to
+   *   layer i+1. The flat layout is `index = dst * srcSize + src` (dst is the
+   *   destination neuron in layer i+1 and src is the source neuron in layer i).
+   */
   buildLayers(layerSizes: number[], weights: Float32Array[]) {
     this.weightMatrices = weights;
-    this.neuronMeshes.forEach((m) => this.scene.remove(m));
+
+    this.neuronMeshes.forEach((m) => {
+      this.scene.remove(m);
+      this.disposeMesh(m);
+    });
     this.neuronMeshes = [];
+
     if (this.inputPlane) {
       this.scene.remove(this.inputPlane);
+      this.disposeMesh(this.inputPlane);
       this.inputPlane = null;
     }
+
     if (this.connectionLines) {
       this.scene.remove(this.connectionLines);
+      this.disposeMesh(this.connectionLines);
       this.connectionLines = null;
     }
 
@@ -128,9 +145,20 @@ export class NetworkVisualization {
     this.renderConnections();
   }
 
+  private disposeMesh(mesh: THREE.InstancedMesh | THREE.LineSegments | null) {
+    if (!mesh) return;
+    mesh.geometry.dispose();
+    if (Array.isArray(mesh.material)) {
+      mesh.material.forEach((m) => m.dispose());
+    } else {
+      mesh.material.dispose();
+    }
+  }
+
   private renderConnections(k = 100) {
     if (this.connectionLines) {
       this.scene.remove(this.connectionLines);
+      this.disposeMesh(this.connectionLines);
       this.connectionLines = null;
     }
 
@@ -213,6 +241,12 @@ export class NetworkVisualization {
     this.inputPlane.instanceColor.needsUpdate = true;
   }
 
+  /**
+   * Updates the neuron colors for each non-input layer from activation values.
+   *
+   * @param activations - Array where `activations[i]` corresponds to
+   *   `neuronMeshes[i]` (i.e., layer i+1, skipping the input layer).
+   */
   updateActivations(activations: Float32Array[]) {
     const color = new THREE.Color();
 
@@ -220,6 +254,13 @@ export class NetworkVisualization {
       const mesh = this.neuronMeshes[i];
       const data = activations[i];
       if (!data) continue;
+
+      if (data.length !== mesh.count) {
+        console.warn(
+          `updateActivations: data length ${data.length} does not match mesh count ${mesh.count} for layer ${i}. Skipping.`
+        );
+        continue;
+      }
 
       for (let j = 0; j < mesh.count; j++) {
         const activation = data[j] ?? 0;
@@ -239,12 +280,33 @@ export class NetworkVisualization {
   }
 
   private animate = () => {
-    requestAnimationFrame(this.animate);
+    this.animationFrameId = requestAnimationFrame(this.animate);
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
   };
 
   dispose() {
+    cancelAnimationFrame(this.animationFrameId);
+
+    this.neuronMeshes.forEach((mesh) => {
+      this.scene.remove(mesh);
+      this.disposeMesh(mesh);
+    });
+    this.neuronMeshes = [];
+
+    if (this.inputPlane) {
+      this.scene.remove(this.inputPlane);
+      this.disposeMesh(this.inputPlane);
+      this.inputPlane = null;
+    }
+
+    if (this.connectionLines) {
+      this.scene.remove(this.connectionLines);
+      this.disposeMesh(this.connectionLines);
+      this.connectionLines = null;
+    }
+
+    this.controls.dispose();
     this.renderer.dispose();
     this.container.removeChild(this.renderer.domElement);
   }
