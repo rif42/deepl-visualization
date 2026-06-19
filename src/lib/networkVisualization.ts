@@ -274,8 +274,8 @@ export class NetworkVisualization {
 
       for (let j = 0; j < mesh.count; j++) {
         const activation = data[j] ?? 0;
-        // No activation = black (no light); high activation = bright.
-        color.setHSL(0.35 - activation * 0.35, 1.0, activation * 0.85);
+        // Single green gradient: black → dark green → green → light green.
+        color.setHSL(0.33, 1.0, activation);
         mesh.setColorAt(j, color);
       }
 
