@@ -273,9 +273,9 @@ export class NetworkVisualization {
       }
 
       for (let j = 0; j < mesh.count; j++) {
-        const activation = data[j] ?? 0;
+        // Clamp activations because hidden-layer ReLU outputs can exceed 1.0.
+        const activation = Math.min(1, Math.max(0, data[j] ?? 0));
         // Single green gradient: black → dark green → green → light green.
-        // Lightness is capped at 0.75 so full activation stays green, not white.
         color.setHSL(0.33, 1.0, activation * 0.75);
         mesh.setColorAt(j, color);
       }
