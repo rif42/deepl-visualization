@@ -12,7 +12,11 @@ export async function runPrediction(
 ): Promise<PredictionResult> {
   const inputTensor = tf.tensor(normalizedPixels, [1, 28, 28]);
 
-  const outputs = model.outputs.map((output) => output as tf.SymbolicTensor);
+  // Capture outputs from all Dense layers: hidden1, hidden2, output
+  const outputs = model.layers
+    .filter((layer) => layer.getClassName() === 'Dense')
+    .map((layer) => layer.output as tf.SymbolicTensor);
+
   const activationModel = tf.model({ inputs: model.input, outputs });
   const predictResult = await activationModel.predict(inputTensor);
   const activations = Array.isArray(predictResult) ? predictResult : [predictResult];

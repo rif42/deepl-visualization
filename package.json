@@ -6,6 +6,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "download-model": "python scripts/download_and_convert.py",
     "test": "vitest run",
     "test:watch": "vitest"
   },
