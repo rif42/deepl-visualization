@@ -1,0 +1,97 @@
+---
+---
+
+<div class="drawing-canvas">
+  <canvas id="digit-canvas" width="28" height="28" aria-label="Draw a digit"></canvas>
+  <div class="canvas-controls">
+    <button id="clear-btn" type="button">Clear</button>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('digit-canvas') as HTMLCanvasElement;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, 28, 28);
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#ffffff';
+
+  let drawing = false;
+
+  function getPos(e: MouseEvent | TouchEvent) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    return {
+      x: ((clientX - rect.left) / rect.width) * 28,
+      y: ((clientY - rect.top) / rect.height) * 28,
+    };
+  }
+
+  function start(e: MouseEvent | TouchEvent) {
+    drawing = true;
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  }
+
+  function move(e: MouseEvent | TouchEvent) {
+    if (!drawing) return;
+    e.preventDefault();
+    const pos = getPos(e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  }
+
+  function end() {
+    drawing = false;
+  }
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  window.addEventListener('touchend', end);
+
+  document.getElementById('clear-btn')!.addEventListener('click', () => {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, 28, 28);
+  });
+
+  (window as any).getCanvasImageData = () => ctx.getImageData(0, 0, 28, 28).data;
+</script>
+
+<style>
+  .drawing-canvas {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  canvas {
+    width: 224px;
+    height: 224px;
+    image-rendering: pixelated;
+    border: 2px solid #444;
+    border-radius: 8px;
+    background: #000;
+    cursor: crosshair;
+  }
+
+  .canvas-controls button {
+    padding: 0.5rem 1rem;
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .canvas-controls button:hover {
+    background: #444;
+  }
+</style>
