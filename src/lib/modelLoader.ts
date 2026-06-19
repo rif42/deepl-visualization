@@ -26,6 +26,28 @@ async function fetchBinary(baseUrl: string, filename: string, shape: number[]): 
   return tf.tensor(values, shape);
 }
 
+async function loadLayerWeights(
+  baseUrl: string,
+  layer: tf.layers.Layer,
+  layerManifest: LayerManifest
+): Promise<void> {
+  let rawWeights: tf.Tensor | null = null;
+  let weights: tf.Tensor | null = null;
+  let bias: tf.Tensor | null = null;
+  try {
+    rawWeights = await fetchBinary(baseUrl, layerManifest.weight.file, layerManifest.weight.shape);
+    weights = rawWeights.transpose();
+    rawWeights.dispose();
+    rawWeights = null;
+    bias = await fetchBinary(baseUrl, layerManifest.bias.file, layerManifest.bias.shape);
+    layer.setWeights([weights, bias]);
+  } finally {
+    rawWeights?.dispose();
+    weights?.dispose();
+    bias?.dispose();
+  }
+}
+
 function validateManifest(manifest: Manifest): void {
   const sections: (keyof Manifest)[] = ['input', 'mid', 'output'];
   for (const section of sections) {
@@ -72,44 +94,9 @@ export async function loadModel(baseUrl: string): Promise<tf.LayersModel> {
   model.add(tf.layers.dense({ units: manifest.mid.weight.shape[0], activation: 'relu', name: 'hidden2' }));
   model.add(tf.layers.dense({ units: manifest.output.weight.shape[0], activation: 'softmax', name: 'output' }));
 
-  let hidden1Weights: tf.Tensor | null = null;
-  let hidden1Bias: tf.Tensor | null = null;
-  try {
-    const hidden1WeightsRaw = await fetchBinary(baseUrl, manifest.input.weight.file, manifest.input.weight.shape);
-    hidden1Weights = hidden1WeightsRaw.transpose();
-    hidden1WeightsRaw.dispose();
-    hidden1Bias = await fetchBinary(baseUrl, manifest.input.bias.file, manifest.input.bias.shape);
-    model.getLayer('hidden1').setWeights([hidden1Weights, hidden1Bias]);
-  } finally {
-    hidden1Weights?.dispose();
-    hidden1Bias?.dispose();
-  }
-
-  let hidden2Weights: tf.Tensor | null = null;
-  let hidden2Bias: tf.Tensor | null = null;
-  try {
-    const hidden2WeightsRaw = await fetchBinary(baseUrl, manifest.mid.weight.file, manifest.mid.weight.shape);
-    hidden2Weights = hidden2WeightsRaw.transpose();
-    hidden2WeightsRaw.dispose();
-    hidden2Bias = await fetchBinary(baseUrl, manifest.mid.bias.file, manifest.mid.bias.shape);
-    model.getLayer('hidden2').setWeights([hidden2Weights, hidden2Bias]);
-  } finally {
-    hidden2Weights?.dispose();
-    hidden2Bias?.dispose();
-  }
-
-  let outputWeights: tf.Tensor | null = null;
-  let outputBias: tf.Tensor | null = null;
-  try {
-    const outputWeightsRaw = await fetchBinary(baseUrl, manifest.output.weight.file, manifest.output.weight.shape);
-    outputWeights = outputWeightsRaw.transpose();
-    outputWeightsRaw.dispose();
-    outputBias = await fetchBinary(baseUrl, manifest.output.bias.file, manifest.output.bias.shape);
-    model.getLayer('output').setWeights([outputWeights, outputBias]);
-  } finally {
-    outputWeights?.dispose();
-    outputBias?.dispose();
-  }
+  await loadLayerWeights(baseUrl, model.getLayer('hidden1'), manifest.input);
+  await loadLayerWeights(baseUrl, model.getLayer('hidden2'), manifest.mid);
+  await loadLayerWeights(baseUrl, model.getLayer('output'), manifest.output);
 
   return model;
 }
