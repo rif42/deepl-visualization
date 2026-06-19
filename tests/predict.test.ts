@@ -16,4 +16,19 @@ describe('runPrediction', () => {
     expect(result.activations).toHaveLength(1);
     expect(result.probabilities.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 5);
   });
+
+  it('can predict multiple times on the same model', async () => {
+    const input = tf.input({ shape: [28, 28] });
+    const flat = tf.layers.flatten().apply(input);
+    const output = tf.layers.dense({ units: 2, activation: 'softmax' }).apply(flat);
+    const model = tf.model({ inputs: input, outputs: output as tf.SymbolicTensor });
+
+    const pixels = new Float32Array(28 * 28).fill(0.5);
+    const result1 = await runPrediction(model, pixels);
+    result1.activations.forEach((t) => t.dispose());
+
+    const result2 = await runPrediction(model, pixels);
+    expect(result2.probabilities).toHaveLength(2);
+    result2.activations.forEach((t) => t.dispose());
+  });
 });
