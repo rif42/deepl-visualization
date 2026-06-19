@@ -15,6 +15,7 @@ describe('runPrediction', () => {
     expect(result.probabilities).toHaveLength(2);
     expect(result.activations).toHaveLength(1);
     expect(result.probabilities.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 5);
+    result.activations.forEach((t) => t.dispose());
   });
 
   it('can predict multiple times on the same model', async () => {
