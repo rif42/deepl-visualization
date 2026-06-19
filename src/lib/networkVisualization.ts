@@ -17,6 +17,7 @@ export class NetworkVisualization {
   private neuronMeshes: THREE.InstancedMesh[] = [];
   private inputPlane: THREE.InstancedMesh | null = null;
   private connectionLines: THREE.LineSegments | null = null;
+  private allConnectionLines: THREE.LineSegments | null = null;
   private layerConfigs: LayerConfig[] = [];
   private weightMatrices: Float32Array[] = [];
   private inputActivations: Float32Array | null = null;
@@ -155,6 +156,7 @@ export class NetworkVisualization {
     }
 
     this.renderConnections();
+    this.buildAllConnectionLines();
   }
 
   private disposeMesh(mesh: THREE.InstancedMesh | THREE.LineSegments | null) {
@@ -219,6 +221,54 @@ export class NetworkVisualization {
 
     this.connectionLines = new THREE.LineSegments(geometry, material);
     this.scene.add(this.connectionLines);
+  }
+
+  /**
+   * Builds an extremely faint mesh containing *every* weight connection.
+   * This gives a sense of the full network topology without adding much
+   * per-frame cost because the geometry is static.
+   */
+  private buildAllConnectionLines() {
+    if (this.allConnectionLines) {
+      this.scene.remove(this.allConnectionLines);
+      this.disposeMesh(this.allConnectionLines);
+      this.allConnectionLines = null;
+    }
+
+    if (this.weightMatrices.length === 0 || this.layerConfigs.length < 2) return;
+
+    const positions: number[] = [];
+
+    for (let layerIndex = 1; layerIndex < this.layerConfigs.length; layerIndex++) {
+      const prevConfig = this.layerConfigs[layerIndex - 1];
+      const currConfig = this.layerConfigs[layerIndex];
+      const weightMatrix = this.weightMatrices[layerIndex - 1];
+
+      for (let i = 0; i < weightMatrix.length; i++) {
+        const srcIndex = i % prevConfig.size;
+        const dstIndex = Math.floor(i / prevConfig.size);
+
+        const srcPos = this.getNeuronPosition(prevConfig, srcIndex);
+        const dstPos = this.getNeuronPosition(currConfig, dstIndex);
+
+        positions.push(srcPos.x, srcPos.y, srcPos.z);
+        positions.push(dstPos.x, dstPos.y, dstPos.z);
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+
+    const material = new THREE.LineBasicMaterial({
+      color: 0x112211,
+      transparent: true,
+      opacity: 0.003,
+      blending: THREE.NormalBlending,
+      depthWrite: false,
+    });
+
+    this.allConnectionLines = new THREE.LineSegments(geometry, material);
+    this.scene.add(this.allConnectionLines);
   }
 
   /**
@@ -415,6 +465,12 @@ export class NetworkVisualization {
       this.scene.remove(this.connectionLines);
       this.disposeMesh(this.connectionLines);
       this.connectionLines = null;
+    }
+
+    if (this.allConnectionLines) {
+      this.scene.remove(this.allConnectionLines);
+      this.disposeMesh(this.allConnectionLines);
+      this.allConnectionLines = null;
     }
 
     this.controls.dispose();
