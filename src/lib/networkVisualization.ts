@@ -199,9 +199,11 @@ export class NetworkVisualization {
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
 
     const material = new THREE.LineBasicMaterial({
-      color: 0x666666,
+      color: 0x55aa55,
       transparent: true,
-      opacity: 0.25,
+      opacity: 0.4,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
     });
 
     this.connectionLines = new THREE.LineSegments(geometry, material);
