@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { topKWeights, type WeightEntry } from './math';
+import { topKIndices, topKWeights, type WeightEntry } from './math';
 
 interface LayerConfig {
   name: string;
@@ -222,11 +222,9 @@ export class NetworkVisualization {
   }
 
   /**
-   * Recomputes the top-K connection lines based on current activations.
-   * Uses the precomputed static top-K weights and scores them by
-   * |weight| × sourceActivation × destinationActivation, so only active
-   * pathways are shown. This is cheap because it only sorts the small
-   * static top-K set per layer instead of the full weight matrix.
+   * Recomputes the top-K connection lines from scratch on every prediction.
+   * Each weight is scored by |weight| × sourceActivation × destinationActivation,
+   * so the lines always reflect the most active pathways for the current input.
    */
   private updateConnections(activations: Float32Array[], k = 100) {
     if (this.connectionLines) {
@@ -235,7 +233,7 @@ export class NetworkVisualization {
       this.connectionLines = null;
     }
 
-    if (this.staticTopK.length === 0 || this.layerConfigs.length < 2) return;
+    if (this.weightMatrices.length === 0 || this.layerConfigs.length < 2) return;
 
     const positions: number[] = [];
 
@@ -243,7 +241,6 @@ export class NetworkVisualization {
       const prevConfig = this.layerConfigs[layerIndex - 1];
       const currConfig = this.layerConfigs[layerIndex];
       const weightMatrix = this.weightMatrices[layerIndex - 1];
-      const topK = this.staticTopK[layerIndex - 1];
 
       const srcActivations =
         layerIndex === 1
@@ -251,21 +248,21 @@ export class NetworkVisualization {
           : activations[layerIndex - 2];
       const dstActivations = activations[layerIndex - 1];
 
-      const scored = topK.map((entry) => {
-        const srcIndex = entry.index % prevConfig.size;
-        const dstIndex = Math.floor(entry.index / prevConfig.size);
-        const score =
-          Math.abs(weightMatrix[entry.index]) *
+      const scores = new Float32Array(weightMatrix.length);
+      for (let i = 0; i < weightMatrix.length; i++) {
+        const srcIndex = i % prevConfig.size;
+        const dstIndex = Math.floor(i / prevConfig.size);
+        scores[i] =
+          Math.abs(weightMatrix[i]) *
           (srcActivations[srcIndex] ?? 0) *
           (dstActivations[dstIndex] ?? 0);
-        return { entry, score };
-      });
+      }
 
-      scored.sort((a, b) => b.score - a.score);
+      const topIndices = topKIndices(scores, k);
 
-      for (const { entry } of scored.slice(0, k)) {
-        const srcIndex = entry.index % prevConfig.size;
-        const dstIndex = Math.floor(entry.index / prevConfig.size);
+      for (const index of topIndices) {
+        const srcIndex = index % prevConfig.size;
+        const dstIndex = Math.floor(index / prevConfig.size);
 
         const srcPos = this.getNeuronPosition(prevConfig, srcIndex);
         const dstPos = this.getNeuronPosition(currConfig, dstIndex);
