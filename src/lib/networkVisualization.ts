@@ -274,8 +274,8 @@ export class NetworkVisualization {
 
       for (let j = 0; j < mesh.count; j++) {
         const activation = data[j] ?? 0;
-        // Inactive neurons stay dark; active ones become bright and appear to glow.
-        color.setHSL(0.35 - activation * 0.35, 1.0, 0.05 + activation * 0.95);
+        // No activation = black (no light); high activation = bright.
+        color.setHSL(0.35 - activation * 0.35, 1.0, activation * 0.85);
         mesh.setColorAt(j, color);
       }
 
