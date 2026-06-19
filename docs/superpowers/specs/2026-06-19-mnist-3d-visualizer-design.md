@@ -36,13 +36,14 @@ Build a browser-based visualization app where a user draws a handwritten digit o
 
 ## 4. Fixed Model Architecture
 
-Use a **pre-trained dense MNIST model** matching the input/output shapes:
+Use the pre-trained dense MNIST model **`dacorvo/mnist-mlp`** from Hugging Face, converted to TensorFlow.js format.
 
-- Input: `28 × 28` grayscale → flattened to `784` floats in `[0, 1]`.
-- Hidden layers: dense with ReLU (target `784 → 128 → 64`).
+- Input: `28 × 28` grayscale → flattened to `784` floats.
+- Normalization: `(pixel / 255 - 0.1307) / 0.3081` (standard MNIST normalization).
+- Hidden layers: `784 → ReLU(256) → ReLU(256) → 10`.
 - Output: `10` neurons with softmax → probabilities for digits `0–9`.
 
-The exact hidden-layer sizes depend on the pre-trained model we obtain. The visualization must read layer shapes from the model at load time rather than hard-coding them.
+The visualization reads layer shapes from the loaded model so it adapts if a different dense model is used.
 
 ## 5. Components
 
@@ -89,7 +90,7 @@ For the target model (`784 → 128 → 64 → 10`), this means 128 hidden-1 sphe
 
 ### 7.2 Activation Encoding
 
-- **Color:** interpolate from dark gray/black (inactive) through green/yellow to red (highly active).
+- **Color:** interpolate from dark gray/black (inactive) through dark yellow to green (highly active).
 - **Scale:** sphere radius grows slightly with activation magnitude.
 - **Output layer:** the predicted digit sphere is largest/highlighted; others dimmer.
 
@@ -121,9 +122,9 @@ Use `THREE.InstancedMesh` or merged line geometry for performance.
 
 ```bash
 # Model is already present in public/model/
-npm install
-npm run dev     # local development
-npm run build   # static export to dist/
+bun install
+bun run dev     # local development
+bun run build   # static export to dist/
 ```
 
 - No backend required.
@@ -135,8 +136,8 @@ npm run build   # static export to dist/
 | Decision | Rationale |
 |----------|-----------|
 | Fixed architecture | Pre-training every possible architecture is infeasible; gap discussion removed user customization. |
-| Pre-trained model | User explicitly chose not to train a custom model. |
-| Dense model only | CNN feature maps are harder to map to the "neuron sphere" mental model. |
+| Pre-trained model | User chose `dacorvo/mnist-mlp` from Hugging Face; converted to TensorFlow.js for browser inference. |
+| Dense model only | CNN feature maps are harder to map to the "neuron sphere" mental model; selected MLP has 784→256→256→10. |
 | 28×28 canvas | Downscaled from the original 64×64 idea to match standard MNIST input and keep visualization tractable. |
 | Predict button | Chosen over live inference to reduce model calls while drawing. |
 | Top-K weight lines | Balances visual clarity and performance vs. drawing all ~109k connections. |
@@ -152,6 +153,5 @@ npm run build   # static export to dist/
 
 ## 12. Open Questions
 
-1. Which exact pre-trained dense MNIST model will we use? (Need to locate or prepare one in TensorFlow.js format.)
-2. What `K` value for top-K weight lines feels right visually?
-3. Do we need touch support for drawing on mobile devices?
+1. What `K` value for top-K weight lines feels right visually? (Default: 100 per transition.)
+2. Do we need touch support for drawing on mobile devices?
