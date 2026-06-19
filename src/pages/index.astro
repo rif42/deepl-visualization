@@ -1,0 +1,67 @@
+---
+import DrawingCanvas from '../components/DrawingCanvas.astro';
+import PredictionPanel from '../components/PredictionPanel.astro';
+import '../styles/global.css';
+---
+
+<main>
+  <header>
+    <h1>MNIST 3D Inference Visualizer</h1>
+    <p>Draw a digit and click Predict to see the network think.</p>
+  </header>
+
+  <section class="visualizer">
+    <aside class="controls">
+      <DrawingCanvas />
+      <PredictionPanel />
+    </aside>
+    <div id="scene" class="scene-container"></div>
+  </section>
+</main>
+
+<script>
+  import * as tf from '@tensorflow/tfjs';
+  import { loadModel } from '../lib/modelLoader';
+  import { runPrediction } from '../lib/predict';
+  import { normalizeCanvasPixels } from '../lib/preprocess';
+  import { NetworkVisualization } from '../lib/networkVisualization';
+
+  async function init() {
+    const sceneContainer = document.getElementById('scene')!;
+    const networkViz = new NetworkVisualization(sceneContainer);
+
+    const model = await loadModel('/model');
+
+    const weightTensors = [
+      model.getLayer('hidden1').getWeights()[0].transpose(),
+      model.getLayer('hidden2').getWeights()[0].transpose(),
+      model.getLayer('output').getWeights()[0].transpose(),
+    ];
+    const weights = weightTensors.map((t) => t.dataSync() as Float32Array);
+    weightTensors.forEach((t) => t.dispose());
+
+    networkViz.buildLayers([784, 256, 256, 10], weights);
+
+    document.getElementById('predict-btn')!.addEventListener('click', async () => {
+      const imageData = (window as any).getCanvasImageData();
+      networkViz.updateInputPlane(imageData);
+
+      const normalized = normalizeCanvasPixels(imageData, 28);
+
+      const { probabilities, activations } = await runPrediction(model, normalized);
+
+      (window as any).updatePrediction(probabilities);
+
+      const activationArrays = activations.map((t) => new Float32Array(t.dataSync()));
+      networkViz.updateActivations(activationArrays);
+
+      activations.forEach((t) => t.dispose());
+    });
+
+    window.addEventListener('resize', () => networkViz.resize());
+  }
+
+  init().catch((err) => {
+    console.error('Failed to initialize app:', err);
+  });
+</script>
