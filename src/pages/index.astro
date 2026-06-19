@@ -58,6 +58,11 @@ import '../styles/global.css';
       activations.forEach((t) => t.dispose());
     });
 
+    document.getElementById('clear-btn')!.addEventListener('click', () => {
+      networkViz.clear();
+      (window as any).resetPrediction();
+    });
+
     window.addEventListener('resize', () => networkViz.resize());
   }
 

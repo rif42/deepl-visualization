@@ -30,6 +30,14 @@
       document.getElementById(`bar-value-${i}`)!.textContent = `${percent}%`;
     });
   };
+
+  (window as any).resetPrediction = () => {
+    document.getElementById('predicted-digit')!.textContent = '-';
+    for (let i = 0; i < 10; i++) {
+      document.getElementById(`bar-${i}`)!.style.width = '0%';
+      document.getElementById(`bar-value-${i}`)!.textContent = '0%';
+    }
+  };
 </script>
 
 <style>

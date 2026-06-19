@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { topKWeights } from './math';
+import { topKWeights, type WeightEntry } from './math';
 
 interface LayerConfig {
   name: string;
@@ -19,6 +19,8 @@ export class NetworkVisualization {
   private connectionLines: THREE.LineSegments | null = null;
   private layerConfigs: LayerConfig[] = [];
   private weightMatrices: Float32Array[] = [];
+  private inputActivations: Float32Array | null = null;
+  private staticTopK: WeightEntry[][] = [];
   private container: HTMLElement;
   private animationFrameId: number = 0;
 
@@ -174,6 +176,7 @@ export class NetworkVisualization {
 
     if (this.weightMatrices.length === 0 || this.layerConfigs.length < 2) return;
 
+    this.staticTopK = [];
     const positions: number[] = [];
 
     for (let layerIndex = 1; layerIndex < this.layerConfigs.length; layerIndex++) {
@@ -182,6 +185,7 @@ export class NetworkVisualization {
       const weightMatrix = this.weightMatrices[layerIndex - 1];
 
       const topK = topKWeights(weightMatrix, k);
+      this.staticTopK.push(topK);
 
       for (const entry of topK) {
         const srcIndex = entry.index % prevConfig.size;
@@ -195,19 +199,83 @@ export class NetworkVisualization {
       }
     }
 
+    this.buildConnectionLines(positions, { color: 0x335533, opacity: 0.12 });
+  }
+
+  private buildConnectionLines(
+    positions: number[],
+    options: { color?: number; opacity?: number } = {}
+  ) {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
 
     const material = new THREE.LineBasicMaterial({
-      color: 0x55aa55,
+      color: options.color ?? 0x55aa55,
       transparent: true,
-      opacity: 0.4,
+      opacity: options.opacity ?? 0.5,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
 
     this.connectionLines = new THREE.LineSegments(geometry, material);
     this.scene.add(this.connectionLines);
+  }
+
+  /**
+   * Recomputes the top-K connection lines based on current activations.
+   * Uses the precomputed static top-K weights and scores them by
+   * |weight| × sourceActivation × destinationActivation, so only active
+   * pathways are shown. This is cheap because it only sorts the small
+   * static top-K set per layer instead of the full weight matrix.
+   */
+  private updateConnections(activations: Float32Array[], k = 100) {
+    if (this.connectionLines) {
+      this.scene.remove(this.connectionLines);
+      this.disposeMesh(this.connectionLines);
+      this.connectionLines = null;
+    }
+
+    if (this.staticTopK.length === 0 || this.layerConfigs.length < 2) return;
+
+    const positions: number[] = [];
+
+    for (let layerIndex = 1; layerIndex < this.layerConfigs.length; layerIndex++) {
+      const prevConfig = this.layerConfigs[layerIndex - 1];
+      const currConfig = this.layerConfigs[layerIndex];
+      const weightMatrix = this.weightMatrices[layerIndex - 1];
+      const topK = this.staticTopK[layerIndex - 1];
+
+      const srcActivations =
+        layerIndex === 1
+          ? this.inputActivations ?? new Float32Array(prevConfig.size)
+          : activations[layerIndex - 2];
+      const dstActivations = activations[layerIndex - 1];
+
+      const scored = topK.map((entry) => {
+        const srcIndex = entry.index % prevConfig.size;
+        const dstIndex = Math.floor(entry.index / prevConfig.size);
+        const score =
+          Math.abs(weightMatrix[entry.index]) *
+          (srcActivations[srcIndex] ?? 0) *
+          (dstActivations[dstIndex] ?? 0);
+        return { entry, score };
+      });
+
+      scored.sort((a, b) => b.score - a.score);
+
+      for (const { entry } of scored.slice(0, k)) {
+        const srcIndex = entry.index % prevConfig.size;
+        const dstIndex = Math.floor(entry.index / prevConfig.size);
+
+        const srcPos = this.getNeuronPosition(prevConfig, srcIndex);
+        const dstPos = this.getNeuronPosition(currConfig, dstIndex);
+
+        positions.push(srcPos.x, srcPos.y, srcPos.z);
+        positions.push(dstPos.x, dstPos.y, dstPos.z);
+      }
+    }
+
+    this.buildConnectionLines(positions);
   }
 
   private getNeuronPosition(config: LayerConfig, index: number): THREE.Vector3 {
@@ -244,9 +312,11 @@ export class NetworkVisualization {
     if (!this.inputPlane) return;
 
     const color = new THREE.Color();
+    this.inputActivations = new Float32Array(this.inputPlane.count);
     for (let i = 0; i < this.inputPlane.count; i++) {
       const pixelIndex = i * 4;
       const gray = imageData[pixelIndex] / 255;
+      this.inputActivations[i] = gray;
       color.setRGB(gray, gray, gray);
       this.inputPlane.setColorAt(i, color);
     }
@@ -284,6 +354,33 @@ export class NetworkVisualization {
 
       mesh.instanceColor.needsUpdate = true;
     }
+
+    this.updateConnections(activations);
+  }
+
+  /**
+   * Resets the visualization to its initial state. Called when the user
+   * clears the drawing canvas.
+   */
+  clear() {
+    const black = new THREE.Color(0x000000);
+
+    if (this.inputPlane) {
+      for (let i = 0; i < this.inputPlane.count; i++) {
+        this.inputPlane.setColorAt(i, black);
+      }
+      this.inputPlane.instanceColor.needsUpdate = true;
+    }
+
+    this.neuronMeshes.forEach((mesh) => {
+      for (let j = 0; j < mesh.count; j++) {
+        mesh.setColorAt(j, black);
+      }
+      mesh.instanceColor.needsUpdate = true;
+    });
+
+    this.inputActivations = new Float32Array(784);
+    this.renderConnections();
   }
 
   resize() {
