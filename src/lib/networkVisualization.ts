@@ -38,6 +38,14 @@ export class NetworkVisualization {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
 
+    // Lights so that emissive neuron materials actually glow
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    this.scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    directionalLight.position.set(10, 10, 20);
+    this.scene.add(directionalLight);
+
     this.animate();
   }
 
@@ -116,7 +124,9 @@ export class NetworkVisualization {
     for (let i = 1; i < this.layerConfigs.length; i++) {
       const config = this.layerConfigs[i];
       const geometry = new THREE.SphereGeometry(0.35, 16, 16);
-      const material = new THREE.MeshBasicMaterial({ color: 0x222222 });
+      // MeshBasicMaterial ignores scene lights so high instance colors look
+      // like the neurons are self-illuminating / emitting light.
+      const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
       const mesh = new THREE.InstancedMesh(geometry, material, config.size);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 
@@ -264,7 +274,8 @@ export class NetworkVisualization {
 
       for (let j = 0; j < mesh.count; j++) {
         const activation = data[j] ?? 0;
-        color.setHSL(0.35 - activation * 0.35, 1.0, 0.2 + activation * 0.5);
+        // Inactive neurons stay dark; active ones become bright and appear to glow.
+        color.setHSL(0.35 - activation * 0.35, 1.0, 0.05 + activation * 0.95);
         mesh.setColorAt(j, color);
       }
 
