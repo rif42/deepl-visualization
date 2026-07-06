@@ -30,7 +30,7 @@ import '../styles/global.css';
     const sceneContainer = document.getElementById('scene')!;
     const networkViz = new NetworkVisualization(sceneContainer);
 
-    const model = await loadModel('/model');
+    const model = await loadModel(`${import.meta.env.BASE_URL}model`);
 
     const weightTensors = [
       model.getLayer('hidden1').getWeights()[0].transpose(),
