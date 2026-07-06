@@ -1,4 +1,5 @@
-import * as tf from '@tensorflow/tfjs';
+import { tf } from './tf';
+import type * as tfTypes from '@tensorflow/tfjs';
 
 interface TensorInfo {
   file: string;
@@ -16,7 +17,7 @@ interface Manifest {
   output: LayerManifest;
 }
 
-async function fetchBinary(baseUrl: string, filename: string, shape: number[]): Promise<tf.Tensor> {
+async function fetchBinary(baseUrl: string, filename: string, shape: number[]): Promise<tfTypes.Tensor> {
   const response = await fetch(`${baseUrl}/${filename}`);
   if (!response.ok) {
     throw new Error(`Failed to load ${filename}: ${response.status}`);
@@ -28,12 +29,12 @@ async function fetchBinary(baseUrl: string, filename: string, shape: number[]): 
 
 async function loadLayerWeights(
   baseUrl: string,
-  layer: tf.layers.Layer,
+  layer: tfTypes.layers.Layer,
   layerManifest: LayerManifest
 ): Promise<void> {
-  let rawWeights: tf.Tensor | null = null;
-  let weights: tf.Tensor | null = null;
-  let bias: tf.Tensor | null = null;
+  let rawWeights: tfTypes.Tensor | null = null;
+  let weights: tfTypes.Tensor | null = null;
+  let bias: tfTypes.Tensor | null = null;
   try {
     rawWeights = await fetchBinary(baseUrl, layerManifest.weight.file, layerManifest.weight.shape);
     weights = rawWeights.transpose();
@@ -76,7 +77,7 @@ function validateManifest(manifest: Manifest): void {
   }
 }
 
-export async function loadModel(baseUrl: string): Promise<tf.LayersModel> {
+export async function loadModel(baseUrl: string): Promise<tfTypes.LayersModel> {
   const manifestResponse = await fetch(`${baseUrl}/manifest.json`);
   if (!manifestResponse.ok) {
     throw new Error(`Failed to load manifest: ${manifestResponse.status}`);

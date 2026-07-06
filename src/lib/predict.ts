@@ -1,9 +1,9 @@
-import * as tf from '@tensorflow/tfjs';
-import type { LayersModel } from '@tensorflow/tfjs';
+import { tf } from './tf';
+import type { LayersModel, Tensor, SymbolicTensor } from '@tensorflow/tfjs';
 
 export interface PredictionResult {
   probabilities: number[];
-  activations: tf.Tensor[];
+  activations: Tensor[];
 }
 
 export async function runPrediction(
@@ -15,7 +15,7 @@ export async function runPrediction(
   // Capture outputs from all Dense layers: hidden1, hidden2, output
   const outputs = model.layers
     .filter((layer) => layer.getClassName() === 'Dense')
-    .map((layer) => layer.output as tf.SymbolicTensor);
+    .map((layer) => layer.output as SymbolicTensor);
 
   const activationModel = tf.model({ inputs: model.input, outputs });
   const predictResult = await activationModel.predict(inputTensor);

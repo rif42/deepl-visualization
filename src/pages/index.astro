@@ -4,6 +4,8 @@ import PredictionPanel from '../components/PredictionPanel.astro';
 import '../styles/global.css';
 ---
 
+<script is:inline defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+
 <main>
   <header>
     <h1>MNIST 3D Inference Visualizer</h1>
@@ -20,7 +22,6 @@ import '../styles/global.css';
 </main>
 
 <script>
-  import * as tf from '@tensorflow/tfjs';
   import { loadModel } from '../lib/modelLoader';
   import { runPrediction } from '../lib/predict';
   import { normalizeCanvasPixels } from '../lib/preprocess';
@@ -30,7 +31,7 @@ import '../styles/global.css';
     const sceneContainer = document.getElementById('scene')!;
     const networkViz = new NetworkVisualization(sceneContainer);
 
-    const model = await loadModel('/model');
+    const model = await loadModel(`${import.meta.env.BASE_URL}model`);
 
     const weightTensors = [
       model.getLayer('hidden1').getWeights()[0].transpose(),
