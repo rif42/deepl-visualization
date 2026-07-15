@@ -27,7 +27,7 @@ export class NetworkVisualization {
   constructor(container: HTMLElement) {
     this.container = container;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0a0a0a);
+    this.scene.background = new THREE.Color(0x2A2A2A);
 
     const aspect = container.clientWidth / container.clientHeight;
     this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
@@ -85,8 +85,9 @@ export class NetworkVisualization {
     const startX = -((layerCount - 1) * spacingX) / 2;
 
     this.layerConfigs = layerSizes.map((size, index) => {
-      const cols = Math.ceil(Math.sqrt(size));
-      const rows = Math.ceil(size / cols);
+      const isOutput = index === layerSizes.length - 1;
+      const cols = isOutput ? size : Math.ceil(Math.sqrt(size));
+      const rows = isOutput ? 1 : Math.ceil(size / cols);
       return {
         name: `layer-${index}`,
         size,
@@ -114,7 +115,7 @@ export class NetworkVisualization {
       const row = Math.floor(i / inputCols);
       inputDummy.position.set(
         inputConfig.position.x - 2,
-        inputStartY + row * inputSpacing,
+        inputStartY + (inputRows - 1 - row) * inputSpacing,
         inputStartZ + col * inputSpacing
       );
       inputDummy.updateMatrix();
