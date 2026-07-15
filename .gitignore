@@ -4,6 +4,5 @@ node_modules/
 .worktrees/
 .DS_Store
 *.log
-public/model/
 src/env.d.ts
 .venv/

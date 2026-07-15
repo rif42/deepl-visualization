@@ -1,0 +1,47 @@
+{
+  "input": {
+    "weight": {
+      "file": "input_weight.dat",
+      "shape": [
+        256,
+        784
+      ]
+    },
+    "bias": {
+      "file": "input_bias.dat",
+      "shape": [
+        256
+      ]
+    }
+  },
+  "mid": {
+    "weight": {
+      "file": "mid_weight.dat",
+      "shape": [
+        256,
+        256
+      ]
+    },
+    "bias": {
+      "file": "mid_bias.dat",
+      "shape": [
+        256
+      ]
+    }
+  },
+  "output": {
+    "weight": {
+      "file": "output_weight.dat",
+      "shape": [
+        10,
+        256
+      ]
+    },
+    "bias": {
+      "file": "output_bias.dat",
+      "shape": [
+        10
+      ]
+    }
+  }
+}
