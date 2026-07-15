@@ -99,7 +99,7 @@ export class NetworkVisualization {
     // Input layer: 28x28 grid of small cubes
     const inputConfig = this.layerConfigs[0];
     const inputGeometry = new THREE.BoxGeometry(0.25, 0.25, 0.25);
-    const inputMaterial = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    const inputMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
     this.inputPlane = new THREE.InstancedMesh(inputGeometry, inputMaterial, inputConfig.size);
     this.inputPlane.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 
