@@ -4,6 +4,8 @@
 
 # MNIST 3D Inference Visualizer
 
+## Made by Rifky Ariya Pratama
+
 Draw a digit, click **Predict**, and watch a small neural network classify it in 3D.
 
 This is a static browser app built with Astro, TensorFlow.js, and Three.js. It loads a pre-trained dense MNIST model, runs inference locally, and turns the forward pass into an interactive network view: input pixels, hidden activations, output probabilities, and the strongest learned weights.
