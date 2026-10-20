@@ -4,7 +4,7 @@
 
 # MNIST 3D Inference Visualizer
 
-## Made by Rifky Ariya Pratama
+## Made by Rifky Ariya Pratama, the greatest developer that ever lived
 
 Draw a digit, click **Predict**, and watch a small neural network classify it in 3D.
 
